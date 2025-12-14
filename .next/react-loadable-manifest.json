@@ -1,1 +1,44 @@
-{}
+{
+  "components\\FormModal.tsx -> ./forms/AnnouncementForm": {
+    "id": "components\\FormModal.tsx -> ./forms/AnnouncementForm",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_forms_AnnouncementForm_tsx.js"
+    ]
+  },
+  "components\\FormModal.tsx -> ./forms/EventForm": {
+    "id": "components\\FormModal.tsx -> ./forms/EventForm",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_forms_EventForm_tsx.js"
+    ]
+  },
+  "components\\FormModal.tsx -> ./forms/FeeForm": {
+    "id": "components\\FormModal.tsx -> ./forms/FeeForm",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_forms_FeeForm_tsx.js"
+    ]
+  },
+  "components\\FormModal.tsx -> ./forms/ParentForm": {
+    "id": "components\\FormModal.tsx -> ./forms/ParentForm",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_forms_ParentForm_tsx.js"
+    ]
+  },
+  "components\\FormModal.tsx -> ./forms/ReceiptForm": {
+    "id": "components\\FormModal.tsx -> ./forms/ReceiptForm",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_forms_ReceiptForm_tsx.js"
+    ]
+  },
+  "components\\FormModal.tsx -> ./forms/StudentForm": {
+    "id": "components\\FormModal.tsx -> ./forms/StudentForm",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_forms_StudentForm_tsx.js"
+    ]
+  },
+  "components\\FormModal.tsx -> ./forms/TeacherForm": {
+    "id": "components\\FormModal.tsx -> ./forms/TeacherForm",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_forms_TeacherForm_tsx.js"
+    ]
+  }
+}

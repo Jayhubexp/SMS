@@ -17,7 +17,7 @@ const Announcements = async () => {
 					Announcements
 				</h1>
 				<Link
-					href='/list/announcements'
+					href=''
 					className='text-xs text-gray-400 dark:text-dark-textSecondary hover:underline'>
 					View All
 				</Link>

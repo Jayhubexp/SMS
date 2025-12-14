@@ -29,7 +29,8 @@ const AnnouncementCard = ({
 						{announcement.title}
 					</h2>
 					<span className='text-xs text-gray-400 bg-white dark:bg-dark-bg dark:text-dark-textSecondary rounded-md px-1 py-1'>
-						{new Date(announcement.date).toLocaleDateString()}
+						{/* Fix: Enforce a specific locale (e.g., 'en-GB') to prevent hydration mismatches */}
+						{new Date(announcement.date).toLocaleDateString("en-GB")}
 					</span>
 				</div>
 				<p className='text-sm text-gray-400 dark:text-dark-textSecondary mt-1 line-clamp-2'>
@@ -55,7 +56,7 @@ const AnnouncementCard = ({
 									{announcement.title}
 								</h2>
 								<span className='text-xs text-gray-500 whitespace-nowrap pt-1'>
-									{new Date(announcement.date).toLocaleDateString()}
+									{new Date(announcement.date).toLocaleDateString("en-GB")}
 								</span>
 							</div>
 
@@ -79,3 +80,5 @@ const AnnouncementCard = ({
 };
 
 export default AnnouncementCard;
+
+

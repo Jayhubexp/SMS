@@ -1,12 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Image from "next/image";
+import PrintButton from "@/components/PrintButton"; // 1. Import the new component
 
 export default async function PrintReceiptPage({
 	params,
 }: {
 	params: { id: string };
 }) {
-	// 1. Fetch Payment & Student Details
 	const { data: payment } = await supabaseAdmin
 		.from("payments")
 		.select(
@@ -28,8 +28,6 @@ export default async function PrintReceiptPage({
 	const student = payment.students;
 	const user = student?.users;
 
-	// 2. Calculate Balance (Total Fees Assigned - Total Paid)
-	// Get all fees for this student
 	const { data: fees } = await supabaseAdmin
 		.from("fee_assignments")
 		.select("fee_items(amount)")
@@ -127,20 +125,159 @@ export default async function PrintReceiptPage({
 				</div>
 			</div>
 
-			{/* Print Button (Hidden when printing) */}
+			{/* 2. Use the Client Component Button here */}
 			<div className='mt-8 text-center print:hidden'>
-				<button
-					onClick={() => window.print()} // Client-side print trigger
-					// Note: In Server Components, pass this via a Client Component wrapper or simple script
-					className='bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-blue-700'>
-					Print Receipt
-				</button>
+				<PrintButton />
 			</div>
-			<script
-				dangerouslySetInnerHTML={{
-					__html: `document.querySelector('button').onclick = () => window.print()`,
-				}}
-			/>
 		</div>
 	);
 }
+
+
+
+// import { supabaseAdmin } from "@/lib/supabaseAdmin";
+// import Image from "next/image";
+
+// export default async function PrintReceiptPage({
+// 	params,
+// }: {
+// 	params: { id: string };
+// }) {
+// 	// 1. Fetch Payment & Student Details
+// 	const { data: payment } = await supabaseAdmin
+// 		.from("payments")
+// 		.select(
+// 			`
+//       id, amount, payment_date, payment_method,
+//       students (
+//         id, admission_number, 
+//         users (first_name, last_name),
+//         classes (name)
+//       ),
+//       receipts (receipt_number)
+//     `,
+// 		)
+// 		.eq("id", params.id)
+// 		.single();
+
+// 	if (!payment) return <div>Receipt not found</div>;
+
+// 	const student = payment.students;
+// 	const user = student?.users;
+
+// 	// 2. Calculate Balance (Total Fees Assigned - Total Paid)
+// 	// Get all fees for this student
+// 	const { data: fees } = await supabaseAdmin
+// 		.from("fee_assignments")
+// 		.select("fee_items(amount)")
+// 		.eq("student_id", student.id);
+
+// 	const { data: payments } = await supabaseAdmin
+// 		.from("payments")
+// 		.select("amount")
+// 		.eq("student_id", student.id);
+
+// 	const totalFees =
+// 		fees?.reduce((sum, f) => sum + (f.fee_items?.amount || 0), 0) || 0;
+// 	const totalPaid = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+// 	const balance = totalFees - totalPaid;
+
+// 	return (
+// 		<div className='max-w-2xl mx-auto bg-white p-10 mt-10 shadow-lg border print:shadow-none print:border-none text-black'>
+// 			{/* Header */}
+// 			<div className='flex justify-between items-center border-b pb-6 mb-6'>
+// 				<div className='flex items-center gap-4'>
+// 					<Image src='/logo.jpg' alt='Logo' width={80} height={80} />
+// 					<div>
+// 						<h1 className='text-2xl font-bold text-blue-900'>
+// 							MERCY SCHOOLS LIMITED
+// 						</h1>
+// 						<p className='text-sm text-gray-500'>Excellence in Education</p>
+// 						<p className='text-sm text-gray-500'>Accra, Ghana</p>
+// 					</div>
+// 				</div>
+// 				<div className='text-right'>
+// 					<h2 className='text-xl font-bold text-gray-700'>OFFICIAL RECEIPT</h2>
+// 					<p className='font-mono text-gray-500'>
+// 						#{payment.receipts?.[0]?.receipt_number}
+// 					</p>
+// 					<p className='text-sm text-gray-500'>
+// 						{new Date(payment.payment_date).toLocaleDateString()}
+// 					</p>
+// 				</div>
+// 			</div>
+
+// 			{/* Student Details */}
+// 			<div className='grid grid-cols-2 gap-8 mb-8'>
+// 				<div>
+// 					<p className='text-xs font-bold text-gray-400 uppercase'>
+// 						Received From
+// 					</p>
+// 					<p className='text-lg font-semibold'>
+// 						{user?.first_name} {user?.last_name}
+// 					</p>
+// 					<p className='text-sm text-gray-600'>
+// 						ID: {student?.admission_number}
+// 					</p>
+// 					<p className='text-sm text-gray-600'>
+// 						Class: {student?.classes?.name || "N/A"}
+// 					</p>
+// 				</div>
+// 				<div className='text-right'>
+// 					<p className='text-xs font-bold text-gray-400 uppercase'>
+// 						Payment Method
+// 					</p>
+// 					<p className='font-medium'>{payment.payment_method}</p>
+// 				</div>
+// 			</div>
+
+// 			{/* Payment Info */}
+// 			<div className='bg-gray-50 p-6 rounded-lg mb-6'>
+// 				<div className='flex justify-between mb-2'>
+// 					<span>Amount Paid</span>
+// 					<span className='font-bold'>GHS {payment.amount.toFixed(2)}</span>
+// 				</div>
+// 				<div className='w-full h-px bg-gray-200 my-2'></div>
+// 				<div className='flex justify-between text-sm text-gray-500'>
+// 					<span>Total Fees (Year)</span>
+// 					<span>GHS {totalFees.toFixed(2)}</span>
+// 				</div>
+// 				<div className='flex justify-between text-sm text-gray-500'>
+// 					<span>Total Paid to Date</span>
+// 					<span>GHS {totalPaid.toFixed(2)}</span>
+// 				</div>
+// 				<div className='flex justify-between text-red-600 font-bold mt-2 pt-2 border-t border-gray-200'>
+// 					<span>Balance Due</span>
+// 					<span>GHS {balance > 0 ? balance.toFixed(2) : "0.00 (Cleared)"}</span>
+// 				</div>
+// 			</div>
+
+// 			{/* Footer / Signature */}
+// 			<div className='mt-12 pt-6 border-t flex justify-between items-end'>
+// 				<div className='text-xs text-gray-400'>
+// 					<p>Generated by System</p>
+// 					<p>{new Date().toLocaleString()}</p>
+// 				</div>
+// 				<div className='text-center'>
+// 					<div className='w-40 h-px bg-gray-400 mb-2'></div>
+// 					<p className='text-xs font-bold uppercase'>Secretary Signature</p>
+// 				</div>
+// 			</div>
+
+// 			{/* Print Button (Hidden when printing) */}
+// 			<div className='mt-8 text-center print:hidden'>
+// 				<button
+// 					onClick={() => window.print()} // Client-side print trigger
+// 					// Note: In Server Components, pass this via a Client Component wrapper or simple script
+// 					className='bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-blue-700'>
+// 					Print Receipt
+// 				</button>
+// 			</div>
+// 			<script
+// 				dangerouslySetInnerHTML={{
+// 					__html: `document.querySelector('button').onclick = () => window.print()`,
+// 				}}
+// 			/>
+// 		</div>
+// 	);
+// }

@@ -92,7 +92,7 @@ const menuItems = [
 				icon: "/attendance.png",
 				label: "Attendance",
 				href: "/list/attendance",
-				visible: ["secretary", "teacher", "student", "parent"],
+				visible: ["secretary", "teacher", "student"],
 			},
 			{
 				icon: "/calendar.png",
@@ -101,10 +101,8 @@ const menuItems = [
 				visible: [
 					"managing_director",
 					"secretary",
-					"system_administrator",
-					"teacher",
-					"student",
-					"parent",
+					"system_administrator"
+					
 				],
 			},
 			// REMOVED MESSAGES ICON HERE
@@ -115,10 +113,8 @@ const menuItems = [
 				visible: [
 					"managing_director",
 					"secretary",
-					"system_administrator",
-					"teacher",
-					"student",
-					"parent",
+					"system_administrator"
+					
 				],
 			},
 			{
@@ -157,19 +153,19 @@ const menuItems = [
 				href: "/settings",
 				visible: ["system_administrator", "managing_director"],
 			},
-			{
-				icon: "/logout.png",
-				label: "Logout",
-				href: "/sign-in",
-				visible: [
-					"managing_director",
-					"secretary",
-					"system_administrator",
-					"teacher",
-					"parent",
-					"student",
-				],
-			},
+			// {
+			// 	icon: "/logout.png",
+			// 	label: "Logout",
+			// 	href: "/sign-in",
+			// 	visible: [
+			// 		"managing_director",
+			// 		"secretary",
+			// 		"system_administrator",
+			// 		"teacher",
+			// 		"parent",
+			// 		"student",
+			// 	],
+			// },
 		],
 	},
 ];
@@ -274,267 +270,3 @@ const MenuContent = ({
 
 export default Menu;
 
-// "use client";
-
-// import { useAuth } from "@/context/AuthContext";
-// import Image from "next/image";
-// import Link from "next/link";
-// import { usePathname } from "next/navigation";
-// import { useState } from "react";
-
-// // Define the menu structure
-// const menuItems = [
-// 	{
-// 		title: "MENU",
-// 		items: [
-// 			{
-// 				icon: "/home.png",
-// 				label: "Home",
-// 				href: "/",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 					"parent",
-// 					"student",
-// 				],
-// 			},
-// 			{
-// 				icon: "/teacher.png",
-// 				label: "Teachers",
-// 				href: "/list/teachers",
-// 				visible: ["managing_director", "secretary", "system_administrator"],
-// 			},
-// 			{
-// 				icon: "/student.png",
-// 				label: "Students",
-// 				href: "/list/students",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 				],
-// 			},
-// 			{
-// 				icon: "/parent.png",
-// 				label: "Parents",
-// 				href: "/list/parents",
-// 				visible: ["managing_director", "secretary", "system_administrator"],
-// 			},
-// 			{
-// 				icon: "/subject.png",
-// 				label: "Subjects",
-// 				href: "/list/subjects",
-// 				visible: ["managing_director", "system_administrator"],
-// 			},
-// 			{
-// 				icon: "/class.png",
-// 				label: "Classes",
-// 				href: "/list/classes",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 				],
-// 			},
-// 			{
-// 				icon: "/lesson.png",
-// 				label: "Lessons",
-// 				href: "/list/lessons",
-// 				visible: ["managing_director", "system_administrator", "teacher"],
-// 			},
-// 			{
-// 				icon: "/exam.png",
-// 				label: "Exams",
-// 				href: "/list/exams",
-// 				visible: ["system_administrator", "teacher", "student", "parent"],
-// 			},
-// 			{
-// 				icon: "/assignment.png",
-// 				label: "Assignments",
-// 				href: "/list/assignments",
-// 				visible: ["system_administrator", "teacher", "student", "parent"],
-// 			},
-// 			{
-// 				icon: "/result.png",
-// 				label: "Results",
-// 				href: "/list/results",
-// 				visible: ["system_administrator", "teacher", "student", "parent"],
-// 			},
-// 			{
-// 				icon: "/attendance.png",
-// 				label: "Attendance",
-// 				href: "/list/attendance",
-// 				visible: ["secretary", "teacher", "student", "parent"],
-// 			},
-// 			{
-// 				icon: "/calendar.png",
-// 				label: "Events",
-// 				href: "/list/events",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 					"student",
-// 					"parent",
-// 				],
-// 			},
-// 			{
-// 				icon: "/message.png",
-// 				label: "Messages",
-// 				href: "/list/messages",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 					"student",
-// 					"parent",
-// 				],
-// 			},
-// 			{
-// 				icon: "/announcement.png",
-// 				label: "Announcements",
-// 				href: "/list/announcements",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 					"student",
-// 					"parent",
-// 				],
-// 			},
-// 			{
-// 				icon: "/finance.png",
-// 				label: "Fee Structures",
-// 				href: "/finance/fees",
-// 				visible: ["managing_director"],
-// 			},
-// 			{
-// 				icon: "/finance.png",
-// 				label: "Issue Receipts",
-// 				href: "/finance/receipts",
-// 				visible: ["secretary", "managing_director"],
-// 			},
-// 		],
-// 	},
-// 	{
-// 		title: "OTHER",
-// 		items: [
-// 			{
-// 				icon: "/profile.png",
-// 				label: "Profile",
-// 				href: "/profile",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 					"parent",
-// 					"student",
-// 				],
-// 			},
-// 			{
-// 				icon: "/setting.png",
-// 				label: "Settings",
-// 				href: "/settings",
-// 				visible: ["system_administrator", "managing_director"],
-// 			},
-// 			{
-// 				icon: "/logout.png",
-// 				label: "Logout",
-// 				href: "/sign-in",
-// 				visible: [
-// 					"managing_director",
-// 					"secretary",
-// 					"system_administrator",
-// 					"teacher",
-// 					"parent",
-// 					"student",
-// 				],
-// 			},
-// 		],
-// 	},
-// ];
-
-// // Dashboard redirection map
-// const getDashboardPath = (role: string) => {
-// 	const dashboardMap: Record<string, string> = {
-// 		managing_director: "/managing-director",
-// 		secretary: "/secretary",
-// 		system_administrator: "/system-administrator",
-// 		teacher: "/teacher",
-// 		student: "/student",
-// 		parent: "/parent",
-// 	};
-// 	return dashboardMap[role] || "/student";
-// };
-
-// const Menu = () => {
-// 	const { role } = useAuth();
-// 	const pathname = usePathname();
-// 	const [open, setOpen] = useState(false); // MOBILE MENU TOGGLE
-
-// 	if (!role) return null;
-
-// 	return (
-// 		<>
-// 			{/* MOBILE MENU BUTTON */}
-// 			<button
-// 				onClick={() => setOpen(!open)}
-// 				className='lg:hidden fixed top-4 left-4 z-50 bg-white dark:bg-dark-bg p-2 rounded-md shadow'>
-// 				<Image src='/singleBranch.png' width={24} height={24} alt='menu' />
-// 			</button>
-
-// 			{/* SIDEBAR */}
-// 			<div
-// 				className={`
-//           fixed top-0 left-0 h-full w-54 bg-white dark:bg-dark-bg shadow-xl z-40
-//           transform transition-transform duration-300
-//           ${open ? "translate-x-0" : "-translate-x-full"}
-//           lg:translate-x-0 lg:static lg:w-34
-//         `}>
-// 				<div className='mt-16 lg:mt-4 p-4 text-sm'>
-// 					{menuItems.map((group) => (
-// 						<div className='flex flex-col gap-2' key={group.title}>
-// 							<span className='hidden lg:block text-gray-400 dark:text-dark-textSecondary font-light my-4'>
-// 								{group.title}
-// 							</span>
-
-// 							{group.items.map((item) => {
-// 								if (!item.visible.includes(role)) return null;
-
-// 								const href =
-// 									item.label === "Home" ? getDashboardPath(role) : item.href;
-// 								const isActive = pathname === href;
-
-// 								return (
-// 									<Link
-// 										href={href}
-// 										key={item.label}
-// 										onClick={() => setOpen(false)} // Close menu on mobile click
-// 										className={`flex items-center gap-4 py-2 px-2 rounded-md transition-colors ${
-// 											isActive
-// 												? "bg-lamaSkyLight dark:bg-dark-border text-blue-600 dark:text-white"
-// 												: "text-gray-500 hover:bg-lamaSkyLight dark:hover:bg-dark-border"
-// 										}`}>
-// 										<Image src={item.icon} alt='' width={20} height={20} />
-// 										<span className='hidden lg:block'>{item.label}</span>
-// 										<span className='lg:hidden'>{item.label}</span>
-// 									</Link>
-// 								);
-// 							})}
-// 						</div>
-// 					))}
-// 				</div>
-// 			</div>
-// 		</>
-// 	);
-// };
-
-// export default Menu;
