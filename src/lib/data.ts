@@ -1,0 +1,12 @@
+export const teachersData: any[] = [/* ... existing or new mock data ... */];
+export const studentsData: any[] = [/* ... existing or new mock data ... */];
+export const parentsData: any[] = [/* ... existing or new mock data ... */];
+export const subjectsData: any[] = [/* ... existing or new mock data ... */];
+export const classesData: any[] = [/* ... existing or new mock data ... */];
+export const lessonsData: any[] = [/* ... existing or new mock data ... */];
+export const examsData: any[] = [/* ... existing or new mock data ... */];
+export const assignmentsData: any[] = [/* ... existing or new mock data ... */];
+export const resultsData: any[] = [/* ... existing or new mock data ... */];
+export const eventsData: any[] = [/* ... existing or new mock data ... */];
+export const announcementsData: any[] = [/* ... existing or new mock data ... */];
+export const calendarEvents: any[] = [/* ... existing or new mock data ... */];
