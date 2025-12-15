@@ -4,7 +4,8 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useState, Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
-import { deleteFeeStructure } from "@/lib/actions"; // 1. Import Delete Action
+// import { deleteFeeStructure } from "@/lib/actions"; // 1. Import Delete Action
+import { deleteFeeStructure, deleteReceipt } from "@/lib/actions";
 
 // Dynamic imports to load forms only when needed
 const FeeForm = dynamic(() => import("./forms/FeeForm"), {
@@ -33,6 +34,7 @@ const EventForm = dynamic(() => import("./forms/EventForm"), {
 const deleteActions: { [key: string]: (id: number | string) => Promise<any> } =
 	{
 		fee: deleteFeeStructure,
+		receipt: deleteReceipt,
 		// Add other delete actions here as you implement them
 	};
 

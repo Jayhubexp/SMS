@@ -1,7 +1,8 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
+  "/(dashboard)/managing-director/page": "app/(dashboard)/managing-director/page.js",
   "/(dashboard)/finance/receipts/page": "app/(dashboard)/finance/receipts/page.js",
-  "/(dashboard)/finance/fees/page": "app/(dashboard)/finance/fees/page.js",
   "/(dashboard)/finance/receipts/print/[id]/page": "app/(dashboard)/finance/receipts/print/[id]/page.js",
-  "/(dashboard)/list/students/page": "app/(dashboard)/list/students/page.js",
-  "/(dashboard)/managing-director/page": "app/(dashboard)/managing-director/page.js"
+  "/(dashboard)/list/students/page": "app/(dashboard)/list/students/page.js"
 }

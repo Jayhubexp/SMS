@@ -115,6 +115,7 @@ export async function createFeeStructure(formData: FormData) {
       .insert({
         name,
         academic_year_id: academicYearId ? parseInt(academicYearId as string) : null,
+		class_id: classId ? parseInt(classId as string) : null, // <--- ADD THIS LINE
       })
       .select()
       .single();
@@ -243,13 +244,20 @@ export async function deleteFeeStructure(id: number | string) {
 
 export async function createReceipt(formData: FormData) {
 	const studentId = formData.get("studentId");
-	const amount = parseFloat(formData.get("amount") as string);
-	const method = formData.get("method") as string; // 'Cash', 'Mobile Money'
+	const amountRaw = formData.get("amount");
+	const method = formData.get("method") as string;
+
+    // 1. Validate Input
+	if (!studentId) return { success: false, error: "Student ID is required." };
+    if (!amountRaw) return { success: false, error: "Amount is required." };
+
+	const amount = parseFloat(amountRaw as string);
+    if (isNaN(amount) || amount <= 0) {
+        return { success: false, error: "Please enter a valid amount greater than 0." };
+    }
 
 	try {
-		if (!studentId) throw new Error("Student ID is required.");
-
-		// 1. Record Payment
+		// 2. Record Payment
 		const { data: payment, error: pErr } = await supabaseAdmin
 			.from("payments")
 			.insert({
@@ -263,7 +271,7 @@ export async function createReceipt(formData: FormData) {
 
 		if (pErr) throw new Error(pErr.message);
 
-		// 2. Generate Receipt
+		// 3. Generate Receipt
 		const receiptNumber = `REC-${Date.now().toString().slice(-8)}`;
 
 		const { error: rErr } = await supabaseAdmin.from("receipts").insert({
@@ -275,8 +283,57 @@ export async function createReceipt(formData: FormData) {
 		if (rErr) throw new Error(rErr.message);
 
 		revalidatePath("/finance/receipts");
-		return { success: true, receiptId: payment.id };
+		return { success: true, receiptId: payment.id }; // Returning payment ID for print link
 	} catch (error: any) {
+        console.error("Create Receipt Error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+// NEW ACTION: Delete Receipt
+// NEW ACTION: Delete Receipt
+export async function deleteReceipt(id: number | string) {
+	try {
+        // 1. Fetch the receipt to find the linked payment_id
+        // FIX: Use .maybeSingle() instead of .single() to avoid crashes if not found
+        const { data: receipt, error: fetchErr } = await supabaseAdmin
+            .from("receipts")
+            .select("payment_id")
+            .eq("id", id)
+            .maybeSingle();
+            
+        if (fetchErr) throw new Error(fetchErr.message);
+        
+        // If receipt doesn't exist, we can treat it as 'already deleted' or throw error
+        if (!receipt) {
+            console.warn("Receipt not found during delete operation.");
+            // We proceed to return success so the UI updates
+            revalidatePath("/finance/receipts");
+            return { success: true }; 
+        }
+
+        // 2. Delete the Receipt
+		const { error: rErr } = await supabaseAdmin
+			.from("receipts")
+			.delete()
+			.eq("id", id);
+
+		if (rErr) throw new Error(rErr.message);
+
+        // 3. Delete the Linked Payment (to keep books balanced)
+        if (receipt.payment_id) {
+            const { error: pErr } = await supabaseAdmin
+                .from("payments")
+                .delete()
+                .eq("id", receipt.payment_id);
+            
+            if (pErr) console.warn("Linked payment could not be deleted automatically:", pErr.message);
+        }
+
+		revalidatePath("/finance/receipts");
+		return { success: true };
+	} catch (error: any) {
+		console.error("Delete failed:", error);
 		return { success: false, error: error.message };
 	}
 }
@@ -558,3 +615,4 @@ export async function getClasses() {
     return { success: false, data: [] };
   }
 }
+

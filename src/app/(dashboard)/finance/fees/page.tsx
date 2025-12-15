@@ -1,7 +1,7 @@
 import FormModal from "@/components/FormModal";
 import Table from "@/components/Table";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
+import AssignFeeButton from "@/components/AssignFeeButton";
 const columns = [
 	{ header: "Structure Name", accessor: "name" },
 	{ header: "Academic Year", accessor: "academicYear" },
@@ -38,6 +38,7 @@ const FeeStructurePage = async () => {
 					<FormModal table='fee' type='update' data={item} />
 					{/* Delete Button */}
 					<FormModal table='fee' type='delete' id={item.id} />
+					<AssignFeeButton feeId={item.id} classId={item.class_id} />
 				</div>
 			</td>
 		</tr>
