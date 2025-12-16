@@ -19,12 +19,12 @@ const ManagingDirectorPage = () => {
 				</div>
 
 				{/* MIDDLE CHART (Attendance Chart Removed) */}
-				<div className='flex gap-4 flex-col lg:flex-row'>
+				{/* <div className='flex gap-4 flex-col lg:flex-row'>
 					{/* Expanded Count Chart to fill the space, or you can keep it smaller */}
-					<div className='w-full h-[450px]'>
+					{/* <div className='w-full h-[450px]'>
 						<CountChart />
 					</div>
-				</div>
+				</div>  */}
 
 				{/* BOTTOM CHART */}
 				<div className='w-full h-[500px]'>

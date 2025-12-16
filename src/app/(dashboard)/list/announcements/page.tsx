@@ -4,6 +4,8 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+export const dynamic = "force-dynamic";
+
 const columns = [
 	{
 		header: "Title",

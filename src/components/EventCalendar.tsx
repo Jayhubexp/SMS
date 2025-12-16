@@ -1,6 +1,7 @@
 import Image from "next/image";
 import EventCalendarContainer from "./EventCalendarContainer"; // Import the client wrapper
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import FormModal from "./FormModal"; // 1. Import FormModal
 
 const EventCalendar = async () => {
 	// FETCH REAL EVENTS

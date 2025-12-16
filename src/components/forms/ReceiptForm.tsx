@@ -1,9 +1,9 @@
 "use client";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
-import { createReceipt, searchStudents } from "@/lib/actions";
+import { createReceipt, searchStudents, getFeeFormData } from "@/lib/actions";
 import { useRouter } from "next/navigation";
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 const ReceiptForm = ({
@@ -18,11 +18,30 @@ const ReceiptForm = ({
 	const [students, setStudents] = useState<any[]>([]);
 	const [selectedStudent, setSelectedStudent] = useState<any>(null);
 	const [balanceInfo, setBalanceInfo] = useState<any>(null);
+	const [feeStructures, setFeeStructures] = useState<any[]>([]); // Store fee types
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
 
 	const firstNameSearch = watch("searchFirstName");
 	const lastNameSearch = watch("searchLastName");
+
+	// Fetch Fee Structures on mount
+	useEffect(() => {
+		const fetchFees = async () => {
+			const res = await getFeeFormData();
+			if (res.success && res.feeStructures) {
+				setFeeStructures(res.feeStructures);
+			} else {
+                // Fallback options if DB fetch fails or is empty
+                setFeeStructures([
+                    { id: 'acad', name: 'Academic Fees' },
+                    { id: 'book', name: 'Book Fees' },
+                    { id: 'souv', name: 'Souvenirs' }
+                ]);
+            }
+		};
+		fetchFees();
+	}, []);
 
 	// Step 1: Search Student
 	const handleSearch = async () => {
@@ -31,8 +50,8 @@ const ReceiptForm = ({
 		if (res.success && res.data) {
 			setStudents(res.data);
 		} else {
-            setStudents([]);
-        }
+			setStudents([]);
+		}
 		setLoading(false);
 	};
 
@@ -77,6 +96,8 @@ const ReceiptForm = ({
 		formData.append("studentId", selectedStudent.id);
 		formData.append("amount", data.amount);
 		formData.append("method", data.method);
+		// Append the selected Fee Type (Name)
+		formData.append("description", data.description);
 
 		const res = await createReceipt(formData);
 		if (res.success) {
@@ -88,10 +109,9 @@ const ReceiptForm = ({
 		}
 	});
 
-    // UPDATED: Helper to get class name from the new direct relationship
-    const getClassName = (s: any) => {
-        return s.classes?.name || "No Class Assigned";
-    };
+	const getClassName = (s: any) => {
+		return s.classes?.name || "No Class Assigned";
+	};
 
 	return (
 		<div className='flex flex-col gap-4 max-h-[80vh] overflow-y-auto'>
@@ -122,8 +142,8 @@ const ReceiptForm = ({
 
 					<div className='flex flex-col gap-2 mt-2'>
 						{students.length === 0 && !loading && (
-                            <p className="text-xs text-gray-400">No students found.</p>
-                        )}
+							<p className='text-xs text-gray-400'>No students found.</p>
+						)}
 						{students.map((s) => (
 							<div
 								key={s.id}
@@ -133,7 +153,6 @@ const ReceiptForm = ({
 									{s.users.first_name} {s.users.last_name}
 								</p>
 								<p className='text-xs text-gray-500'>
-                                    {/* Using the new helper */}
 									{getClassName(s)} | {s.admission_number}
 								</p>
 							</div>
@@ -150,12 +169,13 @@ const ReceiptForm = ({
 							{selectedStudent.users.last_name}
 						</p>
 						<p>
-                            {/* Using the new helper */}
 							<strong>Class:</strong> {getClassName(selectedStudent)}
 						</p>
 						<hr className='my-2' />
 						<p>Total Fees: GHS {balanceInfo?.totalFees.toFixed(2)}</p>
-						<p>Paid So Far: GHS {balanceInfo?.totalPaid.toFixed(2)}</p>
+						<p className='text-blue-800 font-semibold'>
+							Amount Received So Far: GHS {balanceInfo?.totalPaid.toFixed(2)}
+						</p>
 						<p className='text-red-600 font-bold'>
 							Balance: GHS {balanceInfo?.balance.toFixed(2)}
 						</p>
@@ -167,6 +187,23 @@ const ReceiptForm = ({
 						type='number'
 						register={register}
 					/>
+
+					{/* New Field: Payment For (Fee Structure) */}
+					<div className='flex flex-col gap-2'>
+						<label className='text-xs text-gray-500'>Payment For</label>
+						<select 
+                            {...register("description")} 
+                            className='p-2 border rounded-md'
+                            required
+                        >
+							<option value="">Select Receipt Type</option>
+                            {feeStructures.map((fee) => (
+                                <option key={fee.id} value={fee.name}>
+                                    {fee.name}
+                                </option>
+                            ))}
+						</select>
+					</div>
 
 					<div className='flex flex-col gap-2'>
 						<label className='text-xs text-gray-500'>Payment Method</label>
@@ -196,12 +233,15 @@ const ReceiptForm = ({
 };
 export default ReceiptForm;
 
+
+
+
 // "use client";
 // import { useForm } from "react-hook-form";
 // import InputField from "../InputField";
-// import { createReceipt } from "@/lib/actions";
+// import { createReceipt, searchStudents } from "@/lib/actions";
 // import { useRouter } from "next/navigation";
-// import { Dispatch, SetStateAction, useState, useEffect } from "react";
+// import { Dispatch, SetStateAction, useState } from "react";
 // import { supabase } from "@/lib/supabase";
 
 // const ReceiptForm = ({
@@ -212,7 +252,6 @@ export default ReceiptForm;
 // 	const { register, handleSubmit, watch, setValue } = useForm();
 // 	const router = useRouter();
 
-// 	// Step Control
 // 	const [step, setStep] = useState(1);
 // 	const [students, setStudents] = useState<any[]>([]);
 // 	const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -220,42 +259,27 @@ export default ReceiptForm;
 // 	const [loading, setLoading] = useState(false);
 // 	const [error, setError] = useState("");
 
-// 	// Watch input for search
 // 	const firstNameSearch = watch("searchFirstName");
 // 	const lastNameSearch = watch("searchLastName");
 
 // 	// Step 1: Search Student
 // 	const handleSearch = async () => {
 // 		setLoading(true);
-// 		// Note: This relies on Supabase ilike filtering on joined tables or a view
-// 		const { data, error } = await supabase
-// 			.from("students")
-// 			.select(
-// 				`
-//             id, admission_number,
-//             users!inner(first_name, last_name),
-//             classes(id, name)
-//         `,
-// 			)
-// 			.ilike("users.first_name", `%${firstNameSearch || ""}%`)
-// 			.ilike("users.last_name", `%${lastNameSearch || ""}%`)
-// 			.limit(5);
-
-// 		if (data) setStudents(data);
+// 		const res = await searchStudents(firstNameSearch || "", lastNameSearch || "");
+// 		if (res.success && res.data) {
+// 			setStudents(res.data);
+// 		} else {
+// 			setStudents([]);
+// 		}
 // 		setLoading(false);
 // 	};
 
-// 	// Step 2: Select Student & Fetch Debt
 // 	const selectStudent = async (student: any) => {
 // 		setSelectedStudent(student);
 // 		setLoading(true);
 
-// 		// Fetch Total Fees for this student's class
-// 		// Logic: Look at fee_assignments or structures for this class
-// 		// Simplified: Get items linked to student via fee_assignments if exists
+// 		// Calculate Fees
 // 		let totalFees = 0;
-
-// 		// Check fee assignments
 // 		const { data: assignments } = await supabase
 // 			.from("fee_assignments")
 // 			.select("fee_items(amount)")
@@ -263,15 +287,11 @@ export default ReceiptForm;
 
 // 		if (assignments) {
 // 			totalFees = assignments.reduce(
-// 				(sum, a) => sum + (a.fee_items?.amount || 0),
+// 				(sum: number, a: any) => sum + (a.fee_items?.amount || 0),
 // 				0,
 // 			);
-// 		} else {
-// 			// Fallback: Check fee structures for the class
-// 			// (Assuming you auto-assign or want to check structure directly)
 // 		}
 
-// 		// Fetch Total Paid
 // 		const { data: payments } = await supabase
 // 			.from("payments")
 // 			.select("amount")
@@ -285,7 +305,7 @@ export default ReceiptForm;
 // 			balance: totalFees - totalPaid,
 // 		});
 
-// 		setValue("studentId", student.id); // Hidden field for submission
+// 		setValue("studentId", student.id);
 // 		setStep(2);
 // 		setLoading(false);
 // 	};
@@ -305,6 +325,10 @@ export default ReceiptForm;
 // 			setError(res.error || "Failed");
 // 		}
 // 	});
+
+// 	const getClassName = (s: any) => {
+// 		return s.classes?.name || "No Class Assigned";
+// 	};
 
 // 	return (
 // 		<div className='flex flex-col gap-4 max-h-[80vh] overflow-y-auto'>
@@ -328,12 +352,15 @@ export default ReceiptForm;
 // 					<button
 // 						onClick={handleSearch}
 // 						type='button'
-// 						className='bg-blue-500 text-white p-2 rounded'>
-// 						Search
+// 						disabled={loading}
+// 						className='bg-blue-500 text-white p-2 rounded disabled:opacity-50'>
+// 						{loading ? "Searching..." : "Search"}
 // 					</button>
 
 // 					<div className='flex flex-col gap-2 mt-2'>
-// 						{loading && <p>Searching...</p>}
+// 						{students.length === 0 && !loading && (
+// 							<p className='text-xs text-gray-400'>No students found.</p>
+// 						)}
 // 						{students.map((s) => (
 // 							<div
 // 								key={s.id}
@@ -343,7 +370,7 @@ export default ReceiptForm;
 // 									{s.users.first_name} {s.users.last_name}
 // 								</p>
 // 								<p className='text-xs text-gray-500'>
-// 									{s.classes?.name} | {s.admission_number}
+// 									{getClassName(s)} | {s.admission_number}
 // 								</p>
 // 							</div>
 // 						))}
@@ -359,13 +386,18 @@ export default ReceiptForm;
 // 							{selectedStudent.users.last_name}
 // 						</p>
 // 						<p>
-// 							<strong>Class:</strong> {selectedStudent.classes?.name}
+// 							<strong>Class:</strong> {getClassName(selectedStudent)}
 // 						</p>
 // 						<hr className='my-2' />
-// 						<p>Total Fees: GHS {balanceInfo.totalFees.toFixed(2)}</p>
-// 						<p>Paid So Far: GHS {balanceInfo.totalPaid.toFixed(2)}</p>
+// 						<p>Total Fees: GHS {balanceInfo?.totalFees.toFixed(2)}</p>
+
+// 						{/* UPDATED LABEL HERE */}
+// 						<p className='text-blue-800 font-semibold'>
+// 							Amount Received So Far: GHS {balanceInfo?.totalPaid.toFixed(2)}
+// 						</p>
+
 // 						<p className='text-red-600 font-bold'>
-// 							Balance: GHS {balanceInfo.balance.toFixed(2)}
+// 							Balance: GHS {balanceInfo?.balance.toFixed(2)}
 // 						</p>
 // 					</div>
 
@@ -403,4 +435,5 @@ export default ReceiptForm;
 // 	);
 // };
 // export default ReceiptForm;
+
 

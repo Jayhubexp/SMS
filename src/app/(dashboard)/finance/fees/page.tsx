@@ -2,6 +2,7 @@ import FormModal from "@/components/FormModal";
 import Table from "@/components/Table";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import AssignFeeButton from "@/components/AssignFeeButton";
+
 const columns = [
 	{ header: "Structure Name", accessor: "name" },
 	{ header: "Academic Year", accessor: "academicYear" },
@@ -10,6 +11,7 @@ const columns = [
 ];
 
 const FeeStructurePage = async () => {
+	// Added class_id to selection if available in your schema, or relies on logic
 	const { data: fees } = await supabaseAdmin.from("fee_structures").select(`
       id,
       name,
@@ -21,7 +23,7 @@ const FeeStructurePage = async () => {
 	const renderRow = (item: any) => (
 		<tr
 			key={item.id}
-			className='border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight'>
+			className='border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight dark:border-dark-border dark:even:bg-dark-bgSecondary dark:hover:bg-dark-border'>
 			<td className='p-4 font-semibold'>{item.name}</td>
 			<td className='hidden md:table-cell'>
 				{item.academic_years?.name || "N/A"}
@@ -33,12 +35,18 @@ const FeeStructurePage = async () => {
 					.toFixed(2)}
 			</td>
 			<td>
-				<div className='flex items-center gap-2'>
+				{/* Mobile View: Actions arranged nicely with flex-wrap */}
+				<div className='flex items-center gap-2 flex-wrap'>
 					{/* Edit Button */}
 					<FormModal table='fee' type='update' data={item} />
-					{/* Delete Button */}
+					
+                    {/* Delete Button */}
 					<FormModal table='fee' type='delete' id={item.id} />
-					<AssignFeeButton feeId={item.id} classId={item.class_id} />
+					
+                    {/* Conditional Assignment: Only show for Academic Fees */}
+					{item.name === "Academic Fees" && (
+						<AssignFeeButton feeId={item.id} classId={item.class_id} />
+					)}
 				</div>
 			</td>
 		</tr>
@@ -59,10 +67,12 @@ const FeeStructurePage = async () => {
 
 export default FeeStructurePage;
 
+
+
 // import FormModal from "@/components/FormModal";
 // import Table from "@/components/Table";
 // import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
+// import AssignFeeButton from "@/components/AssignFeeButton";
 // const columns = [
 // 	{ header: "Structure Name", accessor: "name" },
 // 	{ header: "Academic Year", accessor: "academicYear" },
@@ -71,10 +81,10 @@ export default FeeStructurePage;
 // ];
 
 // const FeeStructurePage = async () => {
-// 	// Fetch Fees using Admin client to bypass RLS
 // 	const { data: fees } = await supabaseAdmin.from("fee_structures").select(`
 //       id,
 //       name,
+//       academic_year_id,
 //       academic_years(name),
 //       fee_items(amount)
 //     `);
@@ -95,8 +105,11 @@ export default FeeStructurePage;
 // 			</td>
 // 			<td>
 // 				<div className='flex items-center gap-2'>
-// 					{/* 'fee' table type needs to be added to FormModal */}
+// 					{/* Edit Button */}
+// 					<FormModal table='fee' type='update' data={item} />
+// 					{/* Delete Button */}
 // 					<FormModal table='fee' type='delete' id={item.id} />
+// 					<AssignFeeButton feeId={item.id} classId={item.class_id} />
 // 				</div>
 // 			</td>
 // 		</tr>
@@ -116,3 +129,4 @@ export default FeeStructurePage;
 // };
 
 // export default FeeStructurePage;
+
