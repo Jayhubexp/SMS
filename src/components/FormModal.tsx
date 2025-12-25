@@ -8,7 +8,12 @@ import {
     deleteFeeStructure, 
     deleteReceipt,
     deleteAnnouncement,
-    deleteEvent 
+    deleteEvent,
+    deleteClass,
+    deleteFeeType,
+    deleteDiscount,
+	deleteSubject,
+	deleteStudent
 } from "@/lib/actions"; 
 
 // Dynamic imports
@@ -18,6 +23,7 @@ const FeeForm = dynamic(() => import("./forms/FeeForm"), {
 const ReceiptForm = dynamic(() => import("./forms/ReceiptForm"), {
 	loading: () => <h1>Loading...</h1>,
 });
+
 const TeacherForm = dynamic(() => import("./forms/TeacherForm"), {
 	loading: () => <h1>Loading...</h1>,
 });
@@ -33,6 +39,19 @@ const AnnouncementForm = dynamic(() => import("./forms/AnnouncementForm"), {
 const EventForm = dynamic(() => import("./forms/EventForm"), {
 	loading: () => <h1>Loading...</h1>,
 });
+const ClassForm = dynamic(() => import("./forms/ClassForm"), {
+	loading: () => <h1>Loading...</h1>,
+});
+const FeeTypeForm = dynamic(() => import("./forms/FeeTypeForm"), {
+	loading: () => <h1>Loading...</h1>,
+});
+const DiscountForm = dynamic(() => import("./forms/DiscountForm"), {
+	loading: () => <h1>Loading...</h1>,
+});
+const SubjectForm = dynamic(() => import("./forms/SubjectForm"), {
+	loading: () => <h1>Loading...</h1>,
+});
+
 
 // Map tables to delete actions
 const deleteActions: { [key: string]: (id: number | string) => Promise<any> } =
@@ -40,7 +59,12 @@ const deleteActions: { [key: string]: (id: number | string) => Promise<any> } =
 		fee: deleteFeeStructure,
 		receipt: deleteReceipt,
         announcement: deleteAnnouncement,
-        event: deleteEvent
+        event: deleteEvent,
+        class: deleteClass,
+        feeType: deleteFeeType,
+        discount: deleteDiscount,
+		subject: deleteSubject,
+		student: deleteStudent,
 	};
 
 // Map tables to Forms
@@ -70,6 +94,18 @@ const forms: {
 	event: (type, data, setOpen) => (
 		<EventForm type={type} data={data} setOpen={setOpen} />
 	),
+	class: (type, data, setOpen) => (
+		<ClassForm type={type} data={data} setOpen={setOpen} />
+	),
+	feeType: (type, data, setOpen) => (
+		<FeeTypeForm type={type} data={data} setOpen={setOpen} />
+	),
+	discount: (type, data, setOpen) => (
+		<DiscountForm type={type} data={data} setOpen={setOpen} />
+	),
+	subject: (type, data, setOpen) => (
+		<SubjectForm type={type} data={data} setOpen={setOpen} />
+	),
 };
 
 const FormModal = ({
@@ -92,6 +128,8 @@ const FormModal = ({
 		| "event"
 		| "announcement"
 		| "fee"
+		| "feeType"
+		| "discount"
 		| "receipt";
 	type: "create" | "update" | "delete" | "view";
 	data?: any;

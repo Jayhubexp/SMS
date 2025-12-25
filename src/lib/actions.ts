@@ -9,7 +9,6 @@ export async function createUser(
 	formData: FormData,
 	role: "teacher" | "student" | "parent",
 ) {
-	// ... (Keep existing createUser logic)
 	const email = formData.get("email") as string;
 	const password = formData.get("password") as string;
 	const username = formData.get("username") as string;
@@ -32,6 +31,7 @@ export async function createUser(
 	const userId = authData.user.id;
 
 	try {
+		// 1. Update public.users
 		const { error: userError } = await supabaseAdmin
 			.from("users")
 			.update({
@@ -42,33 +42,26 @@ export async function createUser(
 			})
 			.eq("id", userId);
 
-		if (userError)
-			throw new Error(
-				"Failed to update public user details: " + userError.message,
-			);
+		if (userError) throw new Error("Public user update failed: " + userError.message);
 
-		const { data: roleData, error: roleError } = await supabaseAdmin
+		// 2. Assign Role
+		const { data: roleData } = await supabaseAdmin
 			.from("roles")
 			.select("id")
 			.eq("name", role)
 			.single();
 
-		if (roleError || !roleData) throw new Error("Role not found: " + role);
-
-		const { error: assignError } = await supabaseAdmin
-			.from("user_roles")
-			.insert({
+		if (roleData) {
+			await supabaseAdmin.from("user_roles").insert({
 				user_id: userId,
 				role_id: roleData.id,
 			});
+		}
 
-		if (assignError)
-			throw new Error("Failed to assign role: " + assignError.message);
-
+		// 3. Create Specific Profile
 		let profileError = null;
-
 		if (role === "student") {
-			profileError = await createStudentProfile(userId, formData, address, sex);
+			profileError = await createStudentProfile(userId, formData, address, sex, firstName, lastName);
 		} else if (role === "teacher") {
 			profileError = await createTeacherProfile(userId, formData);
 		} else if (role === "parent") {
@@ -80,23 +73,183 @@ export async function createUser(
 		revalidatePath(`/list/${role}s`);
 		return { success: true };
 	} catch (error: any) {
-		console.error("Process failed, rolling back:", error);
+		console.error("Create user failed:", error);
 		await supabaseAdmin.auth.admin.deleteUser(userId);
 		return { success: false, error: error.message };
 	}
-
-
 }
 
 
+async function generateStudentId(yearAdmitted: number): Promise<string> {
+	const prefix = `MSL/${yearAdmitted}/`;
+	try {
+		const { data } = await supabaseAdmin
+			.from("students")
+			.select("admission_number")
+			.ilike("admission_number", `${prefix}%`)
+			.order("admission_number", { ascending: false })
+			.limit(1);
 
-// ==========================================
-// FINANCE ACTIONS
-// ==========================================
+		let nextNum = 1;
+		if (data && data.length > 0 && data[0].admission_number) {
+			const parts = data[0].admission_number.split("/");
+			if (parts.length === 3) {
+				nextNum = parseInt(parts[2]) + 1;
+			}
+		}
+		return `${prefix}${String(nextNum).padStart(4, "0")}`;
+	} catch (e) {
+		// Fallback if DB fails, though unlikely
+		return `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
+	}
+}
+
+// --- UPDATED: Create Student Profile ---
+async function createStudentProfile(
+	userId: string,
+	formData: FormData,
+	address: string,
+	gender: string,
+    firstName: string,
+    lastName: string
+) {
+    const classIdVal = formData.get("classId");
+    const classId = classIdVal ? parseInt(classIdVal as string) : null;
+    const birthday = formData.get("birthday") as string;
+    
+    // Generate Admission Number
+    const currentYear = new Date().getFullYear();
+    const admissionNumber = await generateStudentId(currentYear);
+
+	const { data: student, error } = await supabaseAdmin.from("students").insert({
+		user_id: userId,
+        admission_number: admissionNumber,
+        first_name: firstName,
+        last_name: lastName,
+		date_of_birth: birthday,
+		gender: gender,
+		address: address,
+        class_id: classId
+	}).select().single();
+
+    if (error) return "Student profile error: " + error.message;
+
+    // Auto-assign Class Fees
+    if (student && classId) {
+        const { data: feeItems } = await supabaseAdmin
+            .from("fee_items")
+            .select("id, fee_structures!inner(class_id)")
+            .eq("fee_structures.class_id", classId);
+
+        if (feeItems && feeItems.length > 0) {
+            const assignments = feeItems.map(item => ({
+                student_id: student.id,
+                fee_item_id: item.id
+            }));
+            await supabaseAdmin.from("fee_assignments").insert(assignments);
+        }
+    }
+	return null;
+}
+
+// Add this to ui/src/lib/actions.ts
 
 // ui/src/lib/actions.ts
 
-// ... existing imports
+export async function deleteStudent(id: number | string) {
+  try {
+    // 1. Fetch the student to get the linked user_id (for cleanup later)
+    const { data: student, error: fetchError } = await supabaseAdmin
+      .from("students")
+      .select("user_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) throw new Error("Student not found");
+
+    // 2. DELETE DEPENDENCIES (Clean up related tables first)
+    
+    // A. Fee Assignments (The error you saw)
+    await supabaseAdmin.from("fee_assignments").delete().eq("student_id", id);
+    
+    // B. Attendance
+    await supabaseAdmin.from("attendance").delete().eq("student_id", id);
+    
+    // C. Exam/Assessment Results (Assessment Marks)
+    await supabaseAdmin.from("assessment_marks").delete().eq("student_id", id);
+
+    // D. Class Enrollments
+    await supabaseAdmin.from("class_enrollments").delete().eq("student_id", id);
+    
+    // E. Student Parents (Relationships)
+    await supabaseAdmin.from("student_parents").delete().eq("student_id", id);
+
+    // F. Payments (Optional: Usually financial records should be kept, 
+    // but strict FKs force deletion. If this fails, you might need to nullify the student_id instead)
+    // For now, we delete to allow the operation:
+    await supabaseAdmin.from("payments").delete().eq("student_id", id);
+
+    // 3. Delete the Student Profile
+    const { error: deleteError } = await supabaseAdmin
+      .from("students")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) throw deleteError;
+
+    // 4. Delete the Auth User (Optional cleanup)
+    if (student?.user_id) {
+      await supabaseAdmin.auth.admin.deleteUser(student.user_id);
+    }
+
+    revalidatePath("/list/students");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Delete student error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function createSubject(formData: FormData) {
+    const name = formData.get("name") as string;
+    const classId = formData.get("classId");
+    const teacherId = formData.get("teacherId");
+
+    const { error } = await supabaseAdmin.from("subjects").insert({
+        name,
+        class_id: classId ? parseInt(classId as string) : null,
+        teacher_id: teacherId ? (teacherId as string) : null,
+    });
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath("/list/subjects");
+    return { success: true };
+}
+
+export async function updateSubject(formData: FormData) {
+    const id = formData.get("id") as string;
+    const name = formData.get("name") as string;
+    const classId = formData.get("classId");
+    const teacherId = formData.get("teacherId");
+
+    const { error } = await supabaseAdmin.from("subjects").update({
+        name,
+        class_id: classId ? parseInt(classId as string) : null,
+        teacher_id: teacherId ? (teacherId as string) : null,
+    }).eq("id", parseInt(id));
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath("/list/subjects");
+    return { success: true };
+}
+
+export async function deleteSubject(id: number | string) {
+    const { error } = await supabaseAdmin.from("subjects").delete().eq("id", id);
+    if (error) return { success: false, error: error.message };
+    revalidatePath("/list/subjects");
+    return { success: true };
+}
+
 
 export async function createFeeStructure(formData: FormData) {
   const name = formData.get("name") as string;
@@ -539,7 +692,7 @@ export async function getClasses() {
     return { success: true, data: data || [] };
   } catch (error) {
     console.error("Fetch classes error:", error);
-    return { success: false, data: [] };
+    return { success: false, data: [] }; 
   }
 }
 
@@ -653,56 +806,741 @@ export async function deleteEvent(id: number | string) {
   }
 }
 
-// 4. UPDATE STUDENT PROFILE CREATION (To Auto-Assign Fees on creation)
-// Replace your existing 'createStudentProfile' helper function with this one:
-async function createStudentProfile(
-  userId: string,
-  formData: FormData,
-  address: string,
-  gender: string
+
+export async function createClass(formData: FormData) {
+	const name = formData.get("name") as string;
+	const capacity = parseInt(formData.get("capacity") as string);
+	const gradeId = parseInt(formData.get("gradeId") as string);
+	const teacherId = formData.get("teacherId") as string;
+
+	try {
+		const { data: classData, error } = await supabaseAdmin
+			.from("classes")
+			.insert({
+				name,
+				capacity,
+				grade_level_id: gradeId,
+				teacher_id: teacherId || null,
+			})
+			.select()
+			.single();
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/list/classes");
+		return { success: true, data: classData };
+	} catch (error: any) {
+		console.error("Create class error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function updateClass(formData: FormData) {
+	const id = parseInt(formData.get("id") as string);
+	const name = formData.get("name") as string;
+	const capacity = parseInt(formData.get("capacity") as string);
+	const gradeId = parseInt(formData.get("gradeId") as string);
+	const teacherId = formData.get("teacherId") as string;
+
+	try {
+		const { error } = await supabaseAdmin
+			.from("classes")
+			.update({
+				name,
+				capacity,
+				grade_level_id: gradeId,
+				teacher_id: teacherId || null,
+			})
+			.eq("id", id);
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/list/classes");
+		return { success: true };
+	} catch (error: any) {
+		console.error("Update class error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function deleteClass(id: number | string) {
+	try {
+		const { error } = await supabaseAdmin
+			.from("classes")
+			.delete()
+			.eq("id", id);
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/list/classes");
+		return { success: true };
+	} catch (error: any) {
+		console.error("Delete class error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function getTeachersForDropdown() {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("teachers")
+			.select("id, first_name, last_name")
+			.order("first_name");
+
+		if (error) throw error;
+		return { success: true, data: data || [] };
+	} catch (error: any) {
+		console.error("Fetch teachers error:", error);
+		return { success: false, data: [] };
+	}
+}
+
+export async function getGradeLevelsForDropdown() {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("grade_levels")
+			.select("id, name")
+			.order("name");
+
+		if (error) throw error;
+		return { success: true, data: data || [] };
+	} catch (error: any) {
+		console.error("Fetch grade levels error:", error);
+		return { success: false, data: [] };
+	}
+}
+
+// ==========================================
+// STUDENT ID GENERATION & VALIDATION
+// ==========================================
+
+
+
+export async function validateStudentId(studentId: string): Promise<boolean> {
+	const pattern = /^MSL\/\d{4}\/\d{4}$/;
+	return pattern.test(studentId);
+}
+
+
+
+export async function searchStudentsByName(
+	firstName: string,
+	lastName: string,
 ) {
-  const classId = formData.get("classId");
-  const birthday = formData.get("birthday") as string;
-  const admissionNumber = `ST${new Date().getFullYear()}${Math.floor(
-    1000 + Math.random() * 9000
-  )}`;
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("students")
+			.select(
+				`
+        id,
+        first_name,
+        last_name,
+        class_id,
+        classes(id, name)
+      `,
+		)
+		.ilike("first_name", `%${firstName}%`)
+		.ilike("last_name", `%${lastName}%`)
+		.limit(10);
 
-  // Insert Student
-  const { data: student, error } = await supabaseAdmin
-    .from("students")
-    .insert({
-      user_id: userId,
-      admission_number: admissionNumber,
-      date_of_birth: birthday,
-      gender: gender,
-      address: address,
-      class_id: classId ? parseInt(classId as string) : null,
-    })
-    .select()
-    .single();
+		if (error) throw error;
+		return { success: true, data };
+	} catch (error: any) {
+		console.error("Search students by name error:", error);
+		return { success: false, error: error?.message || "Unknown error" };
+	}
+}
 
-  if (error) return "Student profile error: " + error.message;
+export async function searchStudentsByStudentId(studentId: string) {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("students")
+			.select(
+				`
+        id,
+        admission_number,
+        first_name,
+        last_name,
+        class_id,
+        classes(id, name)
+      `,
+			)
+			.ilike("admission_number", `%${studentId}%`)
+			.limit(10);
 
-  // AUTO-ASSIGN FEES Logic
-  if (student && classId) {
-    const cId = parseInt(classId as string);
+		if (error) throw error;
+		return { success: true, data };
+	} catch (error: any) {
+		console.error("Search students by ID error:", error);
+		return { success: false, error: error?.message || "Unknown error" };
+	}
+}
 
-    // Find all Fee Items for this class
-    const { data: feeItems } = await supabaseAdmin
-      .from("fee_items")
-      .select("id, fee_structures!inner(class_id)")
-      .eq("fee_structures.class_id", cId);
+// ==========================================
+// FEE TYPE MANAGEMENT
+// ==========================================
 
-    if (feeItems && feeItems.length > 0) {
-      const newAssignments = feeItems.map((item) => ({
-        student_id: student.id,
-        fee_item_id: item.id,
-      }));
+export async function createFeeType(formData: FormData) {
+	const name = formData.get("name") as string;
+	const description = formData.get("description") as string;
 
-      // Assign them
-      await supabaseAdmin.from("fee_assignments").insert(newAssignments);
-    }
-  }
+	try {
+		const { data: feeType, error } = await supabaseAdmin
+			.from("fee_types")
+			.insert({
+				name,
+				description,
+			})
+			.select()
+			.single();
 
-  return null;
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true, data: feeType };
+	} catch (error: any) {
+		console.error("Create fee type error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function updateFeeType(formData: FormData) {
+	const id = parseInt(formData.get("id") as string);
+	const name = formData.get("name") as string;
+	const description = formData.get("description") as string;
+
+	try {
+		const { error } = await supabaseAdmin
+			.from("fee_types")
+			.update({
+				name,
+				description,
+			})
+			.eq("id", id);
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true };
+	} catch (error: any) {
+		console.error("Update fee type error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function deleteFeeType(id: number | string) {
+	try {
+		const { error } = await supabaseAdmin
+			.from("fee_types")
+			.delete()
+			.eq("id", id);
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true };
+	} catch (error: any) {
+		console.error("Delete fee type error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function getFeeTypes() {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("fee_types")
+			.select("*")
+			.order("name");
+
+		if (error) throw error;
+		return { success: true, data: data || [] };
+	} catch (error: any) {
+		console.error("Fetch fee types error:", error);
+		return { success: false, data: [] };
+	}
+}
+
+// ==========================================
+// ACADEMIC YEAR & TERMS MANAGEMENT
+// ==========================================
+
+export async function createAcademicYear(formData: FormData) {
+	const name = formData.get("name") as string;
+	const startDate = formData.get("startDate") as string;
+	const endDate = formData.get("endDate") as string;
+
+	try {
+		const { data: year, error } = await supabaseAdmin
+			.from("academic_years")
+			.insert({
+				name,
+				start_date: startDate,
+				end_date: endDate,
+			})
+			.select()
+			.single();
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true, data: year };
+	} catch (error: any) {
+		console.error("Create academic year error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function getAcademicYears() {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("academic_years")
+			.select("*")
+			.order("name", { ascending: false });
+
+		if (error) throw error;
+		return { success: true, data: data || [] };
+	} catch (error: any) {
+		console.error("Fetch academic years error:", error);
+		return { success: false, data: [] };
+	}
+}
+
+export async function createTerm(formData: FormData) {
+	const name = formData.get("name") as string;
+	const academicYearId = parseInt(formData.get("academicYearId") as string);
+	const startDate = formData.get("startDate") as string;
+	const endDate = formData.get("endDate") as string;
+
+	try {
+		const { data: term, error } = await supabaseAdmin
+			.from("terms")
+			.insert({
+				name,
+				academic_year_id: academicYearId,
+				start_date: startDate,
+				end_date: endDate,
+			})
+			.select()
+			.single();
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true, data: term };
+	} catch (error: any) {
+		console.error("Create term error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function getTermsByAcademicYear(academicYearId: number) {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("terms")
+			.select("*")
+			.eq("academic_year_id", academicYearId)
+			.order("name");
+
+		if (error) throw error;
+		return { success: true, data: data || [] };
+	} catch (error: any) {
+		console.error("Fetch terms error:", error);
+		return { success: false, data: [] };
+	}
+}
+
+// ==========================================
+// DISCOUNT MANAGEMENT
+// ==========================================
+
+export async function createDiscount(formData: FormData) {
+	const name = formData.get("name") as string;
+	const type = formData.get("type") as "percentage" | "fixed"; // percentage or fixed
+	const value = parseFloat(formData.get("value") as string);
+	const studentId = formData.get("studentId") as string;
+	const feeStructureId = formData.get("feeStructureId") as string;
+
+	try {
+		const { data: discount, error } = await supabaseAdmin
+			.from("discounts")
+			.insert({
+				name,
+				type,
+				value,
+				student_id: studentId ? parseInt(studentId) : null,
+				fee_structure_id: feeStructureId ? parseInt(feeStructureId) : null,
+			})
+			.select()
+			.single();
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true, data: discount };
+	} catch (error: any) {
+		console.error("Create discount error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function updateDiscount(formData: FormData) {
+	const id = parseInt(formData.get("id") as string);
+	const name = formData.get("name") as string;
+	const type = formData.get("type") as "percentage" | "fixed";
+	const value = parseFloat(formData.get("value") as string);
+	const studentId = formData.get("studentId") as string;
+	const feeStructureId = formData.get("feeStructureId") as string;
+
+	try {
+		const { error } = await supabaseAdmin
+			.from("discounts")
+			.update({
+				name,
+				type,
+				value,
+				student_id: studentId ? parseInt(studentId) : null,
+				fee_structure_id: feeStructureId ? parseInt(feeStructureId) : null,
+			})
+			.eq("id", id);
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true };
+	} catch (error: any) {
+		console.error("Update discount error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function deleteDiscount(id: number | string) {
+	try {
+		const { error } = await supabaseAdmin
+			.from("discounts")
+			.delete()
+			.eq("id", id);
+
+		if (error) throw new Error(error.message);
+
+		revalidatePath("/finance/fees");
+		return { success: true };
+	} catch (error: any) {
+		console.error("Delete discount error:", error);
+		return { success: false, error: error.message };
+	}
+}
+
+export async function getDiscountsByStudent(studentId: number) {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("discounts")
+			.select("*")
+			.eq("student_id", studentId);
+
+		if (error) throw error;
+		return { success: true, data: data || [] };
+	} catch (error: any) {
+		console.error("Fetch student discounts error:", error);
+		return { success: false, data: [] };
+	}
+}
+
+export async function getDiscountsByFeeStructure(feeStructureId: number) {
+	try {
+		const { data, error } = await supabaseAdmin
+			.from("discounts")
+			.select("*")
+			.eq("fee_structure_id", feeStructureId);
+
+		if (error) throw error;
+		return { success: true, data: data || [] };
+	} catch (error: any) {
+		console.error("Fetch structure discounts error:", error);
+		return { success: false, data: [] };
+	}
+}
+
+// ==========================================
+// DYNAMIC FEE CALCULATION
+// ==========================================
+
+export async function calculateTotalFeePayable(
+	studentId: number,
+	feeStructureId: number,
+	termId?: number,
+) {
+	try {
+		// 1. Get fee items for the structure
+		const { data: feeItems, error: feeError } = await supabaseAdmin
+			.from("fee_items")
+			.select("amount")
+			.eq("fee_structure_id", feeStructureId);
+
+		if (feeError) throw feeError;
+
+		const totalFee = feeItems?.reduce((sum, item) => sum + item.amount, 0) || 0;
+
+		// 2. Get discounts applicable to this student and structure
+		const { data: discounts, error: discError } = await supabaseAdmin
+			.from("discounts")
+			.select("type, value")
+			.or(
+				`student_id.eq.${studentId},fee_structure_id.eq.${feeStructureId}`,
+			);
+
+		if (discError) throw discError;
+
+		let totalDiscount = 0;
+		if (discounts) {
+			for (const discount of discounts) {
+				if (discount.type === "percentage") {
+					totalDiscount += (totalFee * discount.value) / 100;
+				} else if (discount.type === "fixed") {
+					totalDiscount += discount.value;
+				}
+			}
+		}
+
+		// 3. Get payments already made by this student (for this structure/term if applicable)
+		let paymentQuery = supabaseAdmin
+			.from("payments")
+			.select("amount")
+			.eq("student_id", studentId);
+
+		if (termId) {
+			paymentQuery = paymentQuery.eq("term_id", termId);
+		}
+
+		const { data: payments, error: paymentError } = await paymentQuery;
+
+		if (paymentError && paymentError.code !== "PGRST116") throw paymentError;
+
+		const totalPaid = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+
+		// 4. Calculate outstanding balance
+		const grossTotal = totalFee - totalDiscount;
+		const outstandingBalance = Math.max(0, grossTotal - totalPaid);
+
+		return {
+			success: true,
+			data: {
+				totalFee,
+				totalDiscount,
+				grossTotal,
+				totalPaid,
+				outstandingBalance,
+			},
+		};
+	} catch (error: any) {
+		console.error("Fee calculation error:", error);
+		return {
+			success: false,
+			error: error.message,
+			data: {
+				totalFee: 0,
+				totalDiscount: 0,
+				grossTotal: 0,
+				totalPaid: 0,
+				outstandingBalance: 0,
+			},
+		};
+	}
+}
+
+// ==========================================
+// FINANCIAL REPORTING
+// ==========================================
+
+export async function getFinanceReportByStudent(studentId: number) {
+	try {
+		const { data: fees, error: feeError } = await supabaseAdmin
+			.from("fee_assignments")
+			.select(
+				`
+        id,
+        fee_items(amount, fee_structures(name, class_id)),
+        students(student_id, classes(name))
+      `,
+			)
+			.eq("student_id", studentId);
+
+		if (feeError && feeError.code !== "PGRST116") throw feeError;
+
+		const { data: payments, error: paymentError } = await supabaseAdmin
+			.from("payments")
+			.select("amount, payment_date, payment_method")
+			.eq("student_id", studentId);
+
+		if (paymentError && paymentError.code !== "PGRST116") throw paymentError;
+
+		const { data: discounts, error: discountError } = await supabaseAdmin
+			.from("discounts")
+			.select("name, type, value")
+			.eq("student_id", studentId);
+
+		if (discountError && discountError.code !== "PGRST116") throw discountError;
+
+		return {
+			success: true,
+			data: {
+				fees: fees || [],
+				payments: payments || [],
+				discounts: discounts || [],
+			},
+		};
+	} catch (error: any) {
+		console.error("Student finance report error:", error);
+		return { success: false, error: error.message, data: {} };
+	}
+}
+
+export async function getFinanceReportByClass(classId: number, termId?: number) {
+	try {
+		// Get all students in the class
+		const { data: students, error: studentError } = await supabaseAdmin
+			.from("students")
+			.select("id, first_name, last_name, class_id")
+			.eq("class_id", classId);
+
+		if (studentError) throw studentError;
+
+		if (!students || students.length === 0) {
+			return {
+				success: true,
+				data: {
+					students: [],
+					totals: {
+						totalBilled: 0,
+						totalPaid: 0,
+						outstandingBalance: 0,
+					},
+				},
+			};
+		}
+
+		const studentIds = students.map((s) => s.id);
+
+		// Get fee assignments
+		const { data: feeAssignments, error: feeError } = await supabaseAdmin
+			.from("fee_assignments")
+			.select("student_id, fee_items(amount)")
+			.in("student_id", studentIds);
+
+		if (feeError && feeError.code !== "PGRST116") throw feeError;
+
+		// Get payments
+		let paymentQuery = supabaseAdmin
+			.from("payments")
+			.select("student_id, amount")
+			.in("student_id", studentIds);
+
+		if (termId) {
+			paymentQuery = paymentQuery.eq("term_id", termId);
+		}
+
+		const { data: payments, error: paymentError } = await paymentQuery;
+
+		if (paymentError && paymentError.code !== "PGRST116") throw paymentError;
+
+		// Calculate totals per student
+		const reportData = students.map((student) => {
+			const studentFees = feeAssignments?.filter(
+				(fa) => fa.student_id === student.id,
+			);
+			const studentPayments = payments?.filter(
+				(p) => p.student_id === student.id,
+			);
+
+			const totalBilled =
+				studentFees?.reduce((sum: number, fa: any) => sum + (fa.fee_items?.[0]?.amount || 0), 0) || 0;
+			const totalPaid =
+				studentPayments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+
+			return {
+				studentId: student.id,
+				name: `${student.first_name} ${student.last_name}`,
+				totalBilled,
+				totalPaid,
+				balance: Math.max(0, totalBilled - totalPaid),
+			};
+		});
+
+		const totals = reportData.reduce(
+			(acc, student) => {
+				acc.totalBilled += student.totalBilled;
+				acc.totalPaid += student.totalPaid;
+				acc.outstandingBalance += student.balance;
+				return acc;
+			},
+			{ totalBilled: 0, totalPaid: 0, outstandingBalance: 0 },
+		);
+
+		return {
+			success: true,
+			data: {
+				students: reportData,
+				totals,
+			},
+		};
+	} catch (error: any) {
+		console.error("Class finance report error:", error);
+		return { success: false, error: error.message, data: {} };
+	}
+}
+
+export async function getFinanceReportByTerm(termId: number) {
+	try {
+		// Get all classes
+		const { data: classes, error: classError } = await supabaseAdmin
+			.from("classes")
+			.select("id, name");
+
+		if (classError) throw classError;
+
+		if (!classes || classes.length === 0) {
+			return {
+				success: true,
+				data: {
+					classes: [],
+					totals: {
+						totalBilled: 0,
+						totalPaid: 0,
+						outstandingBalance: 0,
+					},
+				},
+			};
+		}
+
+		const classReports = await Promise.all(
+			classes.map(async (cls) => {
+				const report = await getFinanceReportByClass(cls.id, termId);
+				return {
+					classId: cls.id,
+					className: cls.name,
+					...report.data,
+				};
+			}),
+		);
+
+		const totals = classReports.reduce(
+			(acc, classReport) => {
+				acc.totalBilled += classReport.totals?.totalBilled || 0;
+				acc.totalPaid += classReport.totals?.totalPaid || 0;
+				acc.outstandingBalance += classReport.totals?.outstandingBalance || 0;
+				return acc;
+			},
+			{ totalBilled: 0, totalPaid: 0, outstandingBalance: 0 },
+		);
+
+		return {
+			success: true,
+			data: {
+				classes: classReports,
+				totals,
+			},
+		};
+	} catch (error: any) {
+		console.error("Term finance report error:", error);
+		return { success: false, error: error.message, data: {} };
+	}
 }

@@ -51,7 +51,7 @@ const menuItems = [
 				icon: "/subject.png",
 				label: "Subjects",
 				href: "/list/subjects",
-				visible: ["managing_director", "system_administrator"],
+				visible: ["managing_director", "system_administrator", "secretary",],
 			},
 			{
 				icon: "/class.png",
@@ -153,19 +153,19 @@ const menuItems = [
 				href: "/settings",
 				visible: ["system_administrator", "managing_director"],
 			},
-			// {
-			// 	icon: "/logout.png",
-			// 	label: "Logout",
-			// 	href: "/sign-in",
-			// 	visible: [
-			// 		"managing_director",
-			// 		"secretary",
-			// 		"system_administrator",
-			// 		"teacher",
-			// 		"parent",
-			// 		"student",
-			// 	],
-			// },
+			{
+				icon: "/logout.png",
+				label: "Logout",
+				href: "/sign-in",
+				visible: [
+					"managing_director",
+					"secretary",
+					"system_administrator",
+					"teacher",
+					"parent",
+					"student",
+				],
+			},
 		],
 	},
 ];

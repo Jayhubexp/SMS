@@ -38,8 +38,8 @@ const SingleStudentPage = async ({ params }: { params: { id: string } }) => {
   }
 
   // Helper to safely get the name
-  const fullName = student.users
-    ? `${student.users.first_name} ${student.users.last_name}`
+  const fullName = student.first_name || student.last_name
+    ? `${student.first_name || ""} ${student.last_name || ""}`.trim()
     : "Unlinked Student";
 
   // Helper to safely get the class name (assuming 1st enrollment is the main class)

@@ -3,6 +3,7 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
+import Link from "next/link"; // Add import
 import { supabaseAdmin } from "@/lib/supabaseAdmin"; // Use Admin client for reliable server fetching
 
 const columns = [
@@ -87,6 +88,9 @@ const ClassListPage = async ({
 			</td>
 			<td>
 				<div className='flex items-center gap-2'>
+					<Link href={`/list/students?classId=${item.id}`} className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
+                        <Image src="/view.jpg" alt="" width={16} height={16} />
+                    </Link>
 					{/* FormModal handles the UI for updating/deleting */}
 					<FormModal table='class' type='update' data={item} />
 					<FormModal table='class' type='delete' id={item.id} />

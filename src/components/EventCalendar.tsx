@@ -32,12 +32,16 @@ const EventCalendar = async () => {
 								<h1 className='font-semibold text-gray-600 dark:text-dark-text'>
 									{event.title}
 								</h1>
-								<span className='text-gray-300 dark:text-dark-textSecondary text-xs'>
-									{new Date(event.start_time).toLocaleTimeString([], {
-										hour: "2-digit",
-										minute: "2-digit",
-									})}
-								</span>
+								<div className='flex items-center gap-2'>
+									<span className='text-gray-300 dark:text-dark-textSecondary text-xs'>
+										{new Date(event.start_time).toLocaleTimeString([], {
+											hour: "2-digit",
+											minute: "2-digit",
+										})}
+									</span>
+									{/* View button (opens same modal as list view) */}
+									<FormModal table='event' type='view' data={event} />
+								</div>
 							</div>
 							<p className='mt-2 text-gray-400 dark:text-dark-textSecondary text-sm'>
 								{event.description}

@@ -42,7 +42,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 			// @ts-ignore
 			const roleName = data?.roles?.name || data?.roles?.[0]?.name || "student";
-			setRole(roleName);
+			// Normalize role naming to use underscores (e.g., managing_director)
+			const normalized = String(roleName).replace(/-/g, "_");
+			setRole(normalized);
 		} catch (error) {
 			console.error("Role fetch unexpected error:", error);
 			setRole("student");
@@ -83,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 			// FIX: Redirect to Home Page ('/') instead of Sign-in.
 			// This confirms the user is out and lets them see the public page.
-			router.replace("/");
+			router.replace("/sign-in");
 			router.refresh(); 
 		} catch (error) {
 			console.error("Logout error:", error);

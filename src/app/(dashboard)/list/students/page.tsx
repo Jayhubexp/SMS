@@ -9,7 +9,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 const columns = [
   { header: "Info", accessor: "info" },
   { 
-    header: "Admission No", 
+    header: "Student ID", 
     accessor: "admission_number", 
     className: "hidden md:table-cell" 
   },
@@ -34,13 +34,29 @@ const StudentListPage = async ({
   const { page, ...queryParams } = searchParams;
   const p = page ? parseInt(page) : 1;
 
-  // 1. Build the query
+  // Build the base query with related user and class info
   let query = supabaseAdmin
     .from("students")
     .select("*, users!inner(first_name, last_name, email, phone_number), classes(name, id)")
     .order("id", { ascending: false });
 
-  // 2. Apply Search Filter
+  // If a classId is provided via query params, filter students by that class
+  let className: string | null = null;
+  if (queryParams.classId) {
+    const classId = queryParams.classId;
+    query = query.eq("class_id", classId);
+
+    // fetch class name for heading/context
+    const { data: classData } = await supabaseAdmin
+      .from("classes")
+      .select("name")
+      .eq("id", classId)
+      .single();
+
+    className = classData?.name || null;
+  }
+
+  // Apply search filter if present
   if (queryParams.search) {
     const searchValue = queryParams.search;
     query = query.or(
